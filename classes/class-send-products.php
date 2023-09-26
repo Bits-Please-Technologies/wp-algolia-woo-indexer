@@ -48,7 +48,7 @@ if (!class_exists('Algolia_Send_Products')) {
     /**
      * Algolia WooIndexer main class
      */
-    
+
     // TODO Rename class "Algolia_Send_Products" to match the regular expression ^[A-Z][a-zA-Z0-9]*$.
     class Algolia_Send_Products
     {
@@ -197,8 +197,13 @@ if (!class_exists('Algolia_Send_Products')) {
                  */
                 $product_type_price = self::get_product_type_price($product);
                 $sale_price = $product_type_price['sale_price'];
-                $regular_price = $product_type_price['regular_price']; 
-
+                $regular_price = $product_type_price['regular_price'];
+                $get_categories = explode(',', wp_strip_all_tags(str_replace('&amp;', '&', wc_get_product_category_list($product->get_id())), false));
+                $product_attributes = get_the_terms($product->get_id(), ['pa_brand', 'pa_size', 'pa_vendor']);
+                $attributes = [];
+                foreach ($product_attributes as $attribute) {
+                    array_push($attributes, $attribute->slug);
+                }
                 /**
                  * Extract image from $product->get_image()
                  */
@@ -210,14 +215,15 @@ if (!class_exists('Algolia_Send_Products')) {
                 $record['objectID']                      = $product->get_id();
                 $record['product_name']                  = $product->get_name();
                 $record['product_image']                 = $product_image;
-                $record['short_description']             = $product->get_short_description();
+                $record['short_description']             = str_replace('&amp;', '&', $product->get_short_description());
                 $record['regular_price']                 = $regular_price;
                 $record['sale_price']                    = $sale_price;
-                $record['on_sale']                       = $product->is_on_sale();
+                $record['categories']                    = $get_categories;
+                $record['attributes']                    = $attributes;
+                $record['slug']                          = $product->get_slug();
                 $records[] = $record;
             }
             wp_reset_postdata();
-
             /**
              * Send the information to Algolia and save the result
              * If result is NullResponse, print an error message
