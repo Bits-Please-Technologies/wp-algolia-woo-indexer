@@ -219,7 +219,9 @@ if (!class_exists('Algolia_Send_Products')) {
                 $record['regular_price']                 = $regular_price;
                 $record['sale_price']                    = $sale_price;
                 $record['categories']                    = $get_categories;
-                $record['attributes']                    = $attributes;
+                $record['brand']                         = $product_attributes[0]->slug;
+                $record['size']                          = $product_attributes[1]->slug;
+                $record['vendor']                        = $product_attributes[2]->slug;
                 $record['slug']                          = $product->get_slug();
                 $records[] = $record;
             }
