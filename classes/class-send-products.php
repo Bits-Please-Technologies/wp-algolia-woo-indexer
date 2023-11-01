@@ -223,6 +223,7 @@ if (!class_exists('Algolia_Send_Products')) {
                 $record['size']                          = $product_attributes[1]->slug;
                 $record['vendor']                        = $product_attributes[2]->slug;
                 $record['slug']                          = $product->get_slug();
+                $record['sku']                          = $product->get_sku();
                 $records[] = $record;
             }
             wp_reset_postdata();
