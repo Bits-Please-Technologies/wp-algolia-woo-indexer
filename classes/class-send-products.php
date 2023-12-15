@@ -48,7 +48,7 @@ if (!class_exists('Algolia_Send_Products')) {
     /**
      * Algolia WooIndexer main class
      */
-
+    
     // TODO Rename class "Algolia_Send_Products" to match the regular expression ^[A-Z][a-zA-Z0-9]*$.
     class Algolia_Send_Products
     {
@@ -93,11 +93,11 @@ if (!class_exists('Algolia_Send_Products')) {
             $sale_price = 0;
             $regular_price = 0;
             if ($product->is_type('simple')) {
-                $sale_price     =  $product->get_sale_price();
-                $regular_price  =  $product->get_regular_price();
+                $sale_price     =  floatval($product->get_sale_price());
+                $regular_price  =  floatval($product->get_regular_price());
             } elseif ($product->is_type('variable')) {
-                $sale_price     =  $product->get_variation_sale_price('min', true);
-                $regular_price  =  $product->get_variation_regular_price('max', true);
+                $sale_price     =  floatval($product->get_variation_sale_price('min', true));
+                $regular_price  =  floatval($product->get_variation_regular_price('max', true));
             }
             return array(
                 'sale_price' => $sale_price,
@@ -197,13 +197,16 @@ if (!class_exists('Algolia_Send_Products')) {
                  */
                 $product_type_price = self::get_product_type_price($product);
                 $sale_price = $product_type_price['sale_price'];
-                $regular_price = $product_type_price['regular_price'];
-                $get_categories = explode(',', wp_strip_all_tags(str_replace('&amp;', '&', wc_get_product_category_list($product->get_id())), false));
-                $product_attributes = get_the_terms($product->get_id(), ['pa_brand', 'pa_size', 'pa_vendor']);
-                $attributes = [];
-                foreach ($product_attributes as $attribute) {
-                    array_push($attributes, $attribute->slug);
-                }
+                $regular_price = $product_type_price['regular_price']; 
+				$get_categories = explode(',', wp_strip_all_tags(str_replace('&amp;', '&', wc_get_product_category_list($product->get_id())), false));
+				$product_categories = wp_get_post_terms($product->get_id(), 'product_cat', array('fields' => 'slugs'));
+				$product_attributes = get_the_terms($product->get_id(), ['pa_brand', 'pa_size', 'pa_vendor']);
+				$product_attribute_slugs = [];
+				foreach ($product_attributes as $product_attrib){
+					$product_attribute_slugs[$product_attrib->taxonomy] = $product_attrib->slug; 
+				} 
+				
+				$total_sales = get_post_meta( $product->get_id(), 'total_sales', true );
                 /**
                  * Extract image from $product->get_image()
                  */
@@ -213,28 +216,38 @@ if (!class_exists('Algolia_Send_Products')) {
                  * Build the record array using the information from the WooCommerce product
                  */
                 $record['objectID']                      = $product->get_id();
+				$record['uniqueID'] 					 = base64_encode('product:'.$product->get_id());
                 $record['product_name']                  = $product->get_name();
                 $record['product_image']                 = $product_image;
                 $record['short_description']             = str_replace('&amp;', '&', $product->get_short_description());
                 $record['regular_price']                 = $regular_price;
                 $record['sale_price']                    = $sale_price;
-                $record['categories']                    = $get_categories;
-                $record['brand']                         = $product_attributes[0]->slug;
-                $record['size']                          = $product_attributes[1]->slug;
-                $record['vendor']                        = $product_attributes[2]->slug;
-                $record['slug']                          = $product->get_slug();
-                $record['sku']                          = $product->get_sku();
+				$record['categories']                    = $product_categories;
+				$record['size']                    	 	 = $product_attribute_slugs['pa_size'];
+				$record['brand']                    	 = $product_attribute_slugs['pa_brand'];
+				$record['vendor']                    	 = $product_attribute_slugs['pa_vendor'];
+				$record['slug']                          = $product->get_slug();
+				$record['sku']                           = $product->get_sku();
+				$record['belastbaar']					 = boolval($product->get_meta('belastbaar')) ? true : false;
+				$record['price_per_box']				 = floatval($product->get_meta('price_per_box'));
+				$record['amount_per_box']				 = floatval($product->get_meta('amount_per_box'));
+				$record['stock_status']					 = $product->get_stock_status();
+				$record['stock_quantity']				 = $product->get_stock_quantity();
+				$record['amount_sold']					 = intval($total_sales);
                 $records[] = $record;
             }
             wp_reset_postdata();
+
             /**
              * Send the information to Algolia and save the result
              * If result is NullResponse, print an error message
              */
             $result = $index->saveObjects($records);
 
-            if ('Algolia\AlgoliaSearch\Response\NullResponse' === get_class($result)) {
-                wp_die(esc_html__('No response from the server. Please check your settings and try again', 'algolia_woo_indexer_settings'));
+            if ('Algolia\AlgoliaSearch\Response\NullResponse' === get_class($result)) {		    
+		    echo '<div class="notice notice-error is-dismissible">
+					 	<p>' . esc_html__('Potential API key issue. You may dismiss this if you are using the premium version.', 'algolia-woo-indexer') . '</p>
+				  		</div>';		    
             }
 
             /**
