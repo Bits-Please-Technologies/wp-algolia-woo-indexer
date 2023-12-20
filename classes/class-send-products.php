@@ -223,7 +223,7 @@ if (!class_exists('Algolia_Send_Products')) {
                 $record['regular_price']                 = $regular_price;
                 $record['sale_price']                    = $sale_price;
 				$record['categories']                    = $product_categories;
-				$record['size']                    	 	 = $product_attribute_slugs['pa_size'];
+				$record['size']                    	 	 = str_replace('%c2%b1', '±', $product_attribute_slugs['pa_size']);
 				$record['brand']                    	 = $product_attribute_slugs['pa_brand'];
 				$record['vendor']                    	 = $product_attribute_slugs['pa_vendor'];
 				$record['slug']                          = $product->get_slug();
@@ -233,6 +233,7 @@ if (!class_exists('Algolia_Send_Products')) {
 				$record['amount_per_box']				 = floatval($product->get_meta('amount_per_box'));
 				$record['stock_status']					 = $product->get_stock_status();
 				$record['stock_quantity']				 = $product->get_stock_quantity();
+				$record['is_hidden']				 	 = $product->get_catalog_visibility() ==='hidden'? true : false;
 				$record['amount_sold']					 = intval($total_sales);
                 $records[] = $record;
             }
